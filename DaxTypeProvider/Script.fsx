@@ -9,7 +9,7 @@
 open LinqToDAX.TypeProvider.CsdlParser
 open System.Xml
 open System.Xml.Linq
-let x = csdlSchema "LDDEVCUBEDB2" "AdventureWorks Tabular Model SQL 2012"
+let x = csdlSchema "localhost" "AdventureWorks Tabular Model SQL 2012"
 
 // Define your library scripting code here
 
@@ -24,23 +24,4 @@ let y =
             }          
             |> Map.ofSeq
 
-let z  = 
-    query {
-           for e in x.Descendants(XName.Get(ns + "EntitySet")) do 
-                let name = e.Attribute(XName.Get("Name")).Value
-                let refName = 
-                    e.Descendants(XName.Get(bi + "EntitySet")) 
-                    |> Seq.map(fun x -> x.Attribute(XName.Get("ReferenceName")))
-                    |> Seq.choose (fun x -> if x = null then None else Some(x))
-                    |> List.ofSeq
-                    |> function
-                        | [] -> None
-                        | x::_ -> Some(x)
-                    
-                select 
-                    {
-                        EntityRecord.Default with
-                            Name = name
-                            Ref = refName |> function Some(x) -> (x.Value) | None -> name
-                    }
-        } |> List.ofSeq
+let z  = entities x

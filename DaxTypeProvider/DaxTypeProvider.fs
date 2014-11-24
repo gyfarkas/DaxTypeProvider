@@ -5,7 +5,7 @@ open System.Reflection
 open Microsoft.FSharp.Core.CompilerServices
 open Microsoft.FSharp.Quotations
 open ProviderImplementation.ProvidedTypes
-
+open StringExtensions
 [<TypeProvider>]
 type DaxTypeProvider(cfg : TypeProviderConfig) as this = 
     inherit TypeProviderForNamespaces()
@@ -23,6 +23,13 @@ type DaxTypeProvider(cfg : TypeProviderConfig) as this =
                      ]
 
 
+    let tableClassType (record : CsdlParser.EntityRecord) = ()
+        
+
+
+    let addProperty (record : CsdlParser.PropertyRecord) = ()
+
+    
 
     do
         provider.DefineStaticParameters(
@@ -32,6 +39,9 @@ type DaxTypeProvider(cfg : TypeProviderConfig) as this =
                 let databaseName = args.[1] :?> string
                 let contextType = ProvidedTypeDefinition(execAsm, ns, typeName, Some typeof<obj>, IsErased = false)
                 let csdl = CsdlParser.csdlSchema serverName databaseName
+                let entities = CsdlParser.entities csdl
+                let associations = CsdlParser.associations csdl
+
                 //addRawProperty templateType template
                 //let vars, expr = parseTemplate { ParserState.Empty with Rest = stringToChars template } []
                 //addConstructor templateType vars expr
