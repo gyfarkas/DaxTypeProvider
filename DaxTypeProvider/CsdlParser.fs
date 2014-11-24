@@ -23,8 +23,20 @@ module StringExtensions =
                 else 
                     c
 
+module XmlExtensions =
+    type System.Xml.Linq.XElement
+        with
+            member x.GetAttribute (attributeName : string) =
+                if x.Attribute(XName.Get(attributeName)) <> null then
+                        x.Attribute(XName.Get(attributeName)).Value |> Some
+                else None
+            member x.GetAttributeWithDefault (attributeName : string) (defaultValue : string) =
+                 if x.Attribute(XName.Get(attributeName)) <> null then
+                        x.Attribute(XName.Get(attributeName)).Value 
+                 else defaultValue
 module CsdlParser = 
     open StringExtensions
+    open XmlExtensions
     type PropertyRecord =
         {
             Name : string
@@ -39,14 +51,7 @@ module CsdlParser =
             Name : string
             Properties : PropertyRecord seq
         }
-        static member Default = 
-            {
-                Ref  = "Invalid"
-                Name = ""
-                Properties = Seq.empty
-            }
-
-    
+   
 
     let ns = @"{http://schemas.microsoft.com/ado/2008/09/edm}"
     let bi = @"{http://schemas.microsoft.com/sqlbi/2010/10/edm/extensions}"
@@ -57,17 +62,9 @@ module CsdlParser =
         |> function
             | []   -> None
             | x::_ -> Some(x)  
-     
-    let firstOfOption xs = 
-        xs
-        |> List.ofSeq
-        |> function
-            | []   -> None
-            | x::_ -> x
     
     let csdlSchema serverName databaseName = 
         let server = new Server()
-        
         let soapCommandXml =
              @" <Envelope xmlns='http://schemas.xmlsoap.org/soap/envelope/'>
                         <Body>
@@ -91,46 +88,34 @@ module CsdlParser =
         XDocument.Load(xmlReader)
 
     let getProperty name typeName (element : XElement option)  =
-        
         element
         |> Option.map 
             (fun e ->
                 let hidden =
-                    if e.Attribute(XName.Get("Stability")) <> null then
-                        e.Attribute(XName.Get("Stability")).Value = "RowNumber"
-                    else 
-                        typeName = "Binary" || false         
+                    match e.GetAttribute "Stability" with
+                    | Some v -> v = "RowNumber"
+                    | None ->  typeName = "Binary" || false         
                 {
                     Name = name
                     refName = 
-                        if e.Attribute(XName.Get("ReferenceName")) <> null then
-                             e.Attribute(XName.Get("ReferenceName")).Value
-                        else name
+                        e.GetAttributeWithDefault "ReferenceName" name                       
                     TypeName = typeName
                     IsHidden = hidden
                 })
 
-    let properties (element : XElement option) =
-        match element with
-        | Some e -> 
-            let ps = 
-                e.Descendants(XName.Get(ns + "Property"))
-            ps
-            |> Seq.map (fun p ->
-                 p.Attribute(XName.Get("Name")),
-                 p.Attribute(XName.Get("Type")),
-                 p.Descendants(XName.Get(bi + "Property")) 
-                 |> Seq.filter (fun x -> x <> null)
-                 |> firstToOption
-                 )
-            |> Seq.choose 
-                ( fun (n,t,e) -> 
-                    if n <> null && t <> null then
-                        getProperty n.Value t.Value e 
-                    else None
-                    )
-        | None -> 
-            Seq.empty
+    let properties (element : XElement) =
+        element.Descendants(XName.Get(ns + "Property"))
+        |> Seq.map (fun p ->
+                p.GetAttribute("Name"),
+                p.GetAttribute("Type"),
+                p.Descendants(XName.Get(bi + "Property")) 
+                |> Seq.filter (fun x -> x <> null)
+                |> firstToOption)
+        |> Seq.choose 
+            (function 
+                | Some n, Some t, e -> 
+                    getProperty n t e 
+                | _ -> None)
 
 
     let associations (csdl : XDocument) = 
@@ -143,33 +128,24 @@ module CsdlParser =
             }
             |> Map.ofSeq
 
-    let entities (csdl : XDocument) =
-        
+    let entities (csdl : XDocument) =      
         seq {
                 for e in csdl.Descendants(XName.Get(ns + "EntityType")) do
                     let name = e.Attribute(XName.Get("Name")).Value
                     let entitySet = 
                         csdl.Descendants(XName.Get(ns + "EntitySet"))
                         |> Seq.filter (fun x -> x <> null)
-                        |> Seq.filter (fun x -> x.Attribute(XName.Get("Name")) <> null && x.Attribute(XName.Get("Name")).Value = name )
+                        |> Seq.filter (fun x -> (x.GetAttributeWithDefault "Name" "DefaultValue") = name )
                         |> List.ofSeq
                     let refName = 
                         entitySet.Descendants(XName.Get(bi + "EntitySet")) 
-                        |> Seq.map(fun x -> x.Attribute(XName.Get("ReferenceName")))
-                        |> Seq.choose (fun x -> if x = null then None else Some(x))
+                        |> Seq.choose(fun x -> x.GetAttribute("ReferenceName"))
                         |> firstToOption
                     yield 
                         {
                             Name = name
-                            Ref = 
-                                refName 
-                                |> function 
-                                    | Some(x) -> if x <> null then (x.Value) else name
-                                    | None -> name
-                            Properties = 
-                                Some(e)
-                                |> properties
-                                
+                            Ref =  refName |> function | Some(x) -> x | None -> name
+                            Properties =  properties e    
                         }
         }|> List.ofSeq   
      
