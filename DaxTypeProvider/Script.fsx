@@ -9,7 +9,7 @@
 open LinqToDAX.TypeProvider.CsdlParser
 open System.Xml
 open System.Xml.Linq
-let x = csdlSchema "localhost" "AdventureWorks Tabular Model SQL 2012"
+let x = csdlSchema "LDDEVCUBEDB2" "AdventureWorks Tabular Model SQL 2012"
 
 // Define your library scripting code here
 

@@ -113,8 +113,9 @@ module CsdlParser =
                 |> firstToOption)
         |> Seq.choose 
             (function 
+                | _, Some "Binary", _ -> None
                 | Some n, Some t, e -> 
-                    getProperty n t e 
+                    getProperty n ("System." + t) e 
                 | _ -> None)
 
 
