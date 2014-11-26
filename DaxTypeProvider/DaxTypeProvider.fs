@@ -35,6 +35,7 @@ type DaxTypeProvider(cfg : TypeProviderConfig) as this =
         t.AddMember f
         let p = ProvidedProperty(prpName, pt, [] )
         p.GetterCode <-  fun args -> Expr.FieldGet(args.[0],f)
+        p.SetterCode <-  fun args -> Expr.FieldSet(args.[0],f, args.[1])
         let colName = "'" + tableName + "'"  + "[" + record.refName + "]"
         let tma = typeof<TabularMappingAttribute>
         let ca = 
@@ -89,14 +90,12 @@ type DaxTypeProvider(cfg : TypeProviderConfig) as this =
             let provider =  new TabularQueryProvider(conn)
             let newTable (t : ProvidedTypeDefinition) (f:ProvidedField) = 
                 let iqt = typeof<System.Linq.IQueryable<_>>.GetGenericTypeDefinition().MakeGenericType(t)
-                let ttt = typeof<TabularTable<_>>.GetGenericTypeDefinition().MakeGenericType(t)
-                let i = null 
-                //System.Activator.CreateInstance(ttt, [|provider|]) 
-                //let tctor = ttt.GetConstructors().[0]
-                //Expr.Value(())
+                let i = null // LinqToDAX.Helper.TabularTable.newTable t conn
+                
                 let arg = 
-                    Expr.Coerce(Expr.Value(i), iqt)
-                Expr.FieldSet(this, f, arg)
+                    Expr.Coerce(Expr.Value(null), iqt)
+                arg
+                //Expr.FieldSet(this, f, arg)
             
             let init  = 
                 fieldsProperties
@@ -116,7 +115,7 @@ type DaxTypeProvider(cfg : TypeProviderConfig) as this =
                 let f = genField contextType fieldName t
                 let p = ProvidedProperty(n.toIdentifier,t,IsStatic = false)
                 p.GetterCode <- fun args -> Expr.FieldGet(args.[0], f)
-                //p.SetterCode <- fun args -> <@@ f.SetValue(args.[0], args.[1]) @@> // Expr.FieldSet(args.[0],f, args.[1])
+                p.SetterCode <- fun args -> Expr.FieldSet(args.[0],f, args.[1])
                 contextType.AddMember p
                 (c,n,f,p)
             ) |> List.ofSeq

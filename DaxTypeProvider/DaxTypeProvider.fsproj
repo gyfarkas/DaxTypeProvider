@@ -53,6 +53,7 @@
     <Compile Include="ProvidedTypes.fsi" />
     <Compile Include="ProvidedTypes.fs" />
     <Compile Include="DebugProvidedTypes.fs" />
+    <Compile Include="TabularTable.fs" />
     <Compile Include="DaxTypeProvider.fs" />
     <None Include="Script.fsx" />
     <Content Include="packages.config" />
