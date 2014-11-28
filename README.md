@@ -10,24 +10,34 @@ At the moment it is only usable like this:
 
 ```F#
 #r @"c:\users\gfarkas\documents\visual studio 2013\Projects\DaxTypeProvider\DaxTypeProvider\bin\Debug\DaxTypeProvider.dll" ;;
-#r @"C:\Users\gfarkas\Documents\Visual Studio 2013\Projects\Library1\packages\LinqToDax.0.0.0.6\lib\net45\LinqToDAX.dll"
+#r @"c:\users\gfarkas\documents\visual studio 2013\Projects\DaxTypeProvider\DaxTypeProvider\bin\Debug\TabularTableExtensions.dll" ;;
+#r @"C:\Users\gfarkas\Source\Repos\codeplex\linqtodax\LinqToDAX\bin\Debug\LinqToDAX.dll"
+#r @"C:\Users\gfarkas\Source\Repos\codeplex\linqtodax\LinqToDAX\bin\Debug\TabularEntities.dll"
 open LinqToDAX.TypeProvider
 open LinqToDAX.Query
 open LinqToDAX
+open LinqToDAX.Helper.TabularTable
+open System
 open System.Linq
+open System.Collections
 open Microsoft.FSharp.Linq
 open Microsoft.FSharp.Quotations
-type MyT = LinqToDAX.TypeProvider.TabularContext<"LDDEVCUBEDB2","AdventureWorks Tabular Model SQL 2012">
+type AdventureWorks = LinqToDAX.TypeProvider.TabularContext<"LDDEVCUBEDB2","AdventureWorks Tabular Model SQL 2012">
 // Define your library scripting code here
 
-//let db = new MyT()
+let db = new AdventureWorks()
 
-let p = new TabularTable<MyT.Currency>(new TabularQueryProvider("Provider=MSOLAP;Data Source=LDDEVCUBEDB2;Initial Catalog=AdventureWorks Tabular Model SQL 2012;"))
 
+let provider = new TabularQueryProvider("Provider=MSOLAP;Data Source=LDDEVCUBEDB2;Initial Catalog=AdventureWorks Tabular Model SQL 2012;")
+let p = new TabularTable<AdventureWorks.Currency>(provider)
+let sales = new TabularTable<AdventureWorks.InternetSales>(provider)
 let q = 
-    query{
+    (query{
         for c in p do
-        select c.CurrencyCode
-    } 
-    |> Seq.toList
+        for s in sales do
+          where (c.CurrencyCode = "GBP")
+          select (s.SalesAmount.Sum())
+    })
+    |> Seq.head
+
 ```
